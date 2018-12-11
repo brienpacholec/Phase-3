@@ -1,0 +1,231 @@
+<!doctype HTML>
+<html lang="en">
+
+<head>
+    <title>Phase 3: Menu</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="../js/phaser.js"></script>
+    <link rel = "stylesheet" href = "../css/style.css" />
+</head>
+
+<body class="center">
+    <p class="header">Pong</p>
+    <p class="description">Created by Brien Pacholec and Mark Volkov</p>
+    <script>
+        var config = {
+            type: Phaser.AUTO,
+            width: 640,
+            height: 480,
+            physics: {
+                default: 'arcade',
+                arcade: {
+
+                    debug: false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update,
+            }
+        };
+        
+        var paddle1;
+        var paddle2;
+        var ball;
+        var topBorder;
+        var bottomBorder;
+        var leftBorder;
+        var rightBorder;
+        var x=350;
+        var y=350;
+        var xNeg;
+        var yNeg;
+        var paddlehit1;
+        var paddlehit2;
+        var point;
+        var winner;
+        var lastTouch;
+
+        var launch = false;
+        var win = false;
+
+        var greetingText;
+        var greetingFont = {font: "30px Impact", fill:"#ffb300", alight: "center"}; 
+        var selectText;
+        var selectFont = {font: "24px Courier", fill:"#ffb300", alight: "center"}; 
+        
+        var stageOneText;
+        var stageTwoText;
+        var stageThreeText;
+        var stageFont = {font: "20px Impact", fill:"#ffb300", alight: "center", }; 
+        var click;
+
+
+        function preload() {
+            this.load.image('background', '../assets/background/background.png');
+            this.load.image('leftPaddle', '../assets/gameplay/paddle1.png');
+            this.load.image('rightPaddle', '../assets/gameplay/paddle2.png');
+            this.load.image('borderTB','../assets/background/border1.png');
+            this.load.image('borderLR','../assets/background/border2.png');
+            this.load.image('ball', '../assets/gameplay/ball2.png');
+            
+            this.load.audio('hit1', '../assets/audio/hit1.mp3');
+            this.load.audio('hit2', '../assets/audio/hit2.mp3');
+            this.load.audio('point', '../assets/audio/point.mp3');
+            this.load.audio('winner', '../assets/audio/winner.mp3');
+            this.load.audio('click', '../assets/audio/click.mp3');
+}
+
+        function create() {
+            
+
+            //Background
+            this.add.image(325, 250, 'background');
+
+            //Left Paddle
+            paddle1 = this.physics.add.sprite(25, 240, 'leftPaddle');
+            paddle1.setCollideWorldBounds(true);
+            paddle1.body.immovable = true;
+            paddle1.setDisplaySize(41, 90);
+
+            //Right Paddle
+            paddle2 = this.physics.add.sprite(615, 240, 'rightPaddle');
+            paddle2.setCollideWorldBounds(true);
+            paddle2.body.immovable = true;
+            paddle2.setDisplaySize(41, 90);
+
+            //Paddle Noises
+            paddlehit1 = this.sound.add('hit1');
+            paddlehit2 = this.sound.add('hit2');
+            point = this.sound.add('point');
+            winner = this.sound.add('winner');
+            click = this.sound.add('click');
+            
+
+            //Ball
+            ball = this.physics.add.sprite(325, 250, 'ball');
+            ball.setCollideWorldBounds(true);
+            ball.setBounce(1, 1);
+            ball.body.maxVelocity.set(700);
+
+            //Paddle Controls
+            cursors = this.input.keyboard.createCursorKeys();
+
+            //Paddle Collisions
+            this.physics.add.collider(ball, paddle1, function() {
+                paddlehit1.play();
+                lastTouch = 0;
+            });
+            this.physics.add.collider(ball, paddle2, function() {
+                paddlehit2.play();
+                lastTouch = 1;
+            });
+         
+            
+            topBorder = this.add.image(310,4.5,'borderTB');
+            bottomBorder = this.add.image(310,475,'borderTB');
+            leftBorder = this.add.image(5,240,'borderLR');
+            rightBorder = this.add.image(636,240,'borderLR');
+            
+            greetingText = this.add.text(150,100,"Welcome to Our Pong Game!",greetingFont);
+            selectTextText = this.add.text(180,150,"Please Select A Level",selectFont);
+            
+            stageOneText = this.add.text(240,225,"Stage 1: Basic Pong",stageFont);
+            stageOneText.setInteractive();
+            stageOneText.on('pointerdown', () => { window.location.replace('../stage1/index.html'); click.play(); });
+            
+            
+            stageTwoText = this.add.text(220,275,"Stage 2: Power Up Pong",stageFont);
+            stageTwoText.setInteractive();
+            stageTwoText.on('pointerdown', () => { window.location.replace('../stage2/index.html'); click.play(); });
+            
+            stageThreeText = this.add.text(225,325,"Stage 3: Obstacle Pong",stageFont);
+            stageThreeText.setInteractive();
+            stageThreeText.on('pointerdown', () => { window.location.replace('../stage3/index.html'); click.play(); });
+           
+            
+        
+        }
+        function update() {
+            
+            if(!win){
+                if(launch){
+                    //Paddle Movement
+                    paddleMovement();
+                    
+                }
+
+                if(!launch){
+                    relaunchBall();
+                }
+            
+            }
+            
+            
+        }
+
+        //Initial Functions
+        function paddleMovement() {
+            paddle1.body.velocity.setTo(ball.body.velocity.y);
+            paddle1.body.velocity.x = 0;
+            paddle1.body.maxVelocity.y = 700;
+            paddle2.body.velocity.setTo(ball.body.velocity.y);
+            paddle2.body.velocity.x = 0;
+            paddle2.body.maxVelocity.y = 700;
+
+        }
+
+ 
+        
+        //Launching the Ball
+        function launchBall(){
+            ball.setVelocity(launchBallX(), launchBallY());
+            launch = true;
+        }
+        function launchBallX() {
+            x = 300;
+            xNeg = Math.floor(Math.random() * 2);
+            if (xNeg == 0) {
+                x = -x;
+            }
+            return x;
+        }
+        function launchBallY() {
+            y = 300;
+            yNeg = Math.floor(Math.random() * 2);
+            if (yNeg == 0) {
+                y = -y;
+            }
+            return y;
+        }
+
+        
+        function relaunchBall(){
+            launchBall();
+            launch = true;
+        
+        }
+        
+
+        function destroyForWin(sprite){
+            sprite.visible = false;
+            sprite.setCollideWorldBounds(false);
+            
+        }
+        
+        function launchAfterWin(){
+            win = false;
+            ball.visible=true;
+            
+            ball.setCollideWorldBounds(true);
+            relaunchBall();
+        }
+        
+        var game = new Phaser.Game(config);
+
+    </script>
+</body>
+
+</html>

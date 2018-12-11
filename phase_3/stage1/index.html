@@ -1,0 +1,322 @@
+<!doctype HTML>
+<html lang="en">
+
+<head>
+    <title>Phase 3: Stage 1</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="../js/phaser.js"></script>
+    <link rel = "stylesheet" href = "../css/style.css" />
+</head>
+
+<body class="center">
+    <p class="header">Pong</p>
+    <p class="description">Created by Brien Pacholec and Mark Volkov</p>
+    <script>
+        var config = {
+            type: Phaser.AUTO,
+            width: 640,
+            height: 480,
+            physics: {
+                default: 'arcade',
+                arcade: {
+
+                    debug: false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update,
+            }
+        };
+        
+        var paddle1;
+        var paddle2;
+        var ball;
+
+        var score1 = 0;
+        var score2 = 0;
+        
+        var scoreText1;
+        var scoreText2;
+        var winningText1;
+        var winningText2;
+
+        var scoreFont = {font: "25px Impact", fill:"#8ffcff", align: "center"};
+        var winningFont = {font: "35px Impact", fill:"#39ff14", align: "center"};
+        var relaunchFont = {font: "30px Impact", fill:"#ffb300", alight: "center"};
+        
+        var topBorder;
+        var bottomBorder;
+        var leftBorder;
+        var rightBorder;
+        
+
+
+        
+        var x=350;
+        var y=350;
+        var xNeg;
+        var yNeg;
+
+        var paddlehit1;
+        var paddlehit2;
+        var point;
+        var winner;
+
+        var lastTouch;
+
+        var launch = false;
+        var win = false;
+        var relaunchText;
+        
+        var menuText; 
+        var menuFont = {font: "20px Impact", fill:"#ffb300", alight: "center", };
+        var click;
+    
+
+
+
+        function preload() {
+            this.load.image('background', '../assets/background/background.png');
+            this.load.image('leftPaddle', '../assets/gameplay/paddle1.png');
+            this.load.image('rightPaddle', '../assets/gameplay/paddle2.png');
+            this.load.image('borderTB','../assets/background/border1.png');
+            this.load.image('borderLR','../assets/background/border2.png');
+            this.load.image('ball', '../assets/gameplay/ball2.png');
+            
+            
+            this.load.audio('hit1', '../assets/audio/hit1.mp3');
+            this.load.audio('hit2', '../assets/audio/hit2.mp3');
+            this.load.audio('point', '../assets/audio/point.mp3');
+            this.load.audio('winner', '../assets/audio/winner.mp3');
+            this.load.audio('click', '../assets/audio/click.mp3');
+}
+
+        function create() {
+            
+
+            //Background
+            this.add.image(325, 250, 'background');
+
+            //Left Paddle
+            paddle1 = this.physics.add.sprite(25, 240, 'leftPaddle');
+            paddle1.setCollideWorldBounds(true);
+            paddle1.body.immovable = true;
+            paddle1.setDisplaySize(41, 90);
+
+            //Right Paddle
+            paddle2 = this.physics.add.sprite(615, 240, 'rightPaddle');
+            paddle2.setCollideWorldBounds(true);
+            paddle2.body.immovable = true;
+            paddle2.setDisplaySize(41, 90);
+
+            //Paddle Noises
+            paddlehit1 = this.sound.add('hit1');
+            paddlehit2 = this.sound.add('hit2');
+            point = this.sound.add('point');
+            winner = this.sound.add('winner');
+            click = this.sound.add('click');
+            
+
+            //Ball
+            ball = this.physics.add.sprite(325, 250, 'ball');
+            ball.setCollideWorldBounds(true);
+            ball.setBounce(1.2, 1.1);
+            ball.body.maxVelocity.set(700);
+
+            //Paddle Controls
+            cursors = this.input.keyboard.createCursorKeys();
+
+            //Paddle Collisions
+            this.physics.add.collider(ball, paddle1, function() {
+                paddlehit1.play();
+                lastTouch = 0;
+            });
+            this.physics.add.collider(ball, paddle2, function() {
+                paddlehit2.play();
+                lastTouch = 1;
+            });
+            
+            //Text Output
+            scoreText1 = this.add.text(25, 25, "Score: "+score1, scoreFont);
+            scoreText2 = this.add.text(450, 25, "Score: "+score2, scoreFont);
+            relaunchText = this.add.text(150,200, "Press the SPACE key to Launch", relaunchFont);
+            winningText1 = this.add.text(25,100,'',winningFont); 
+            winningText2 = this.add.text(360,100,'',winningFont); 
+            
+            topBorder = this.add.image(310,4.5,'borderTB');
+            bottomBorder = this.add.image(310,475,'borderTB');
+            leftBorder = this.add.image(5,240,'borderLR');
+            rightBorder = this.add.image(636,240,'borderLR');
+            
+            menuText = this.add.text(250, 300, 'Go Back To Menu', menuFont);
+            menuText.setInteractive();
+            menuText.on('pointerdown', () => { window.location.replace('../menu/index.html'); click.play(); });
+        }
+
+        function update() {
+            
+            if(!win){
+                if(launch){
+                    //Paddle Movement
+                    paddleMovement();
+
+                    //Check Score
+                    checkScore();
+
+                    //Check Win
+                    checkWin();
+                }
+
+                if(!launch){
+                    relaunchBall();
+                }
+            
+            }
+            if(win){
+                resetGame();
+            }
+            
+        }
+
+        //Initial Functions
+        function paddleMovement() {
+            if (cursors.up.isDown) {
+                paddle1.setVelocityY(-500);
+            } else if (cursors.down.isDown) {
+                paddle1.setVelocityY(500);
+            } else {
+                paddle1.setVelocityY(0);
+            }
+
+//            if (cursors.right.isDown) {
+//                paddle2.setVelocityY(-500);
+//            } else if (cursors.left.isDown) {
+//                paddle2.setVelocityY(500);
+//            } else {
+//                paddle2.setVelocityY(0);
+//            }
+            paddle2.body.velocity.setTo(ball.body.velocity.y);
+            paddle2.body.velocity.x = 0;
+            paddle2.body.maxVelocity.y = 500;
+
+        }
+
+        function checkScore(){
+            if (ball.body.blocked.left || ball.body.blocked.right) {
+                if (ball.body.blocked.left) {
+                    console.log("Player 2 Scored!");
+                    point.play();
+                    score2++;
+                    scoreText2.setText("Score: " + score2);
+                    reset();
+
+                }
+                if (ball.body.blocked.right) {
+                    console.log("Player 1 Scored!");
+                    point.play();
+                    score1++;
+                    scoreText1.setText("Score: " + score1);
+                    reset();
+
+                }
+            }
+        }
+        
+        //Launching the Ball
+        function launchBall(){
+            ball.setVelocity(launchBallX(), launchBallY());
+            launch = true;
+        }
+        function launchBallX() {
+            x = 300;
+            xNeg = Math.floor(Math.random() * 2);
+            if (xNeg == 0) {
+                x = -x;
+            }
+            return x;
+        }
+        function launchBallY() {
+            y = 300;
+            yNeg = Math.floor(Math.random() * 2);
+            if (yNeg == 0) {
+                y = -y;
+            }
+            return y;
+        }
+
+        //Relaunching Functions        
+        function reset(){
+            relaunchText.visible=true;
+            menuText.visible=true;
+            paddle1.body.velocity.setTo(0);
+            paddle2.body.velocity.setTo(0);
+            paddle1.y = 240;
+            paddle2.y = 240;
+            ball.setVelocity(0,0);
+            ball.x=325;
+            ball.y=250;
+            launch = false;
+        }
+        function relaunchBall(){
+            if (cursors.space.isDown){
+                relaunchText.visible=false;
+                menuText.visible=false;
+                launchBall();
+                launch = true;
+            }
+        }
+        
+        //Winning Functions
+        function checkWin(){
+            if(score1==2){
+                winner.play();
+                destroyForWin(ball);
+                winningText1.visible=true;
+                relaunchText.visible=true;
+                winningText1.setText("PLAYER ONE WINS!");
+                win=true;
+
+            } else if (score2==2){
+                winner.play();
+                destroyForWin(ball);
+                winningText2.visible=true;
+                relaunchText.visible=true;
+                winningText2.setText("PLAYER TWO WINS!");
+                win=true;
+            }
+        }
+        function destroyForWin(sprite){
+            sprite.visible = false;
+            sprite.setCollideWorldBounds(false);
+            
+        }
+        
+        function resetGame(){
+            if(cursors.space.isDown){
+                winningText1.visible=false;
+                winningText2.visible=false;
+                menuText.visible = false;
+                score1=0;
+                score2=0;
+                scoreText1.setText("Score: "+score1);
+                scoreText2.setText("Score: "+score2);
+                launchAfterWin();    
+            }
+        }
+        function launchAfterWin(){
+            win = false;
+            ball.visible=true;
+            
+            ball.setCollideWorldBounds(true);
+            relaunchBall();
+        }
+        
+        var game = new Phaser.Game(config);
+
+    </script>
+</body>
+
+</html>

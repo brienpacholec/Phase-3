@@ -1,0 +1,15 @@
+.center {
+    background-color: aqua;
+    text-align: center;
+}
+
+.header{
+    font-family: 'Lucida Console';
+    font-size: 50px;
+}
+
+.description{
+    font-family: 'Lucida Console';
+    font-size: 16px;
+}
+

@@ -1,0 +1,682 @@
+<!doctype HTML>
+<html lang="en">
+
+<head>
+    <title>Phase 3: Stage 3</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="../js/phaser.js"></script>
+    <link rel = "stylesheet" href = "../css/style.css"/>
+</head>
+
+<body class="center">
+    <p class="header">Pong</p>
+    <p class="description">Created by Brien Pacholec and Mark Volkov</p>
+    <script>
+        var config = {
+            type: Phaser.AUTO,
+            width: 640,
+            height: 480,
+            physics: {
+                default: 'arcade',
+                arcade: {
+
+                    debug: false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update,
+            }
+        };
+        
+        
+        //Initial Variables
+        var paddle1;
+        var paddle2;
+        var ball;
+        var score1 = 0;
+        var score2 = 0;
+        var topBorder;
+        var bottomBorder;
+        var leftBorder;
+        var rightBorder;
+        
+        //Text Variables
+        var scoreText1;
+        var scoreText2;
+        var winningText1;
+        var winningText2;
+        var relaunchText;
+        var scoreFont = {font: "25px Impact", fill:"#8ffcff", align: "center"};
+        var winningFont = {font: "35px Impact", fill:"#39ff14", align: "center"};
+        var relaunchFont = {font: "30px Impact", fill:"#ffb300", alight: "center"};   
+        
+        //Ball Velocities
+        var x=350;
+        var y=350;
+        var direction;
+        var ballVelocityX;
+        var ballVelocityY;
+        var ballBounds;
+        var ballMaxVelocity = 700;
+        
+        //Paddle Velocities
+        var paddleVelocityUp = -500; 
+        var paddleVelocityDown = 500;
+        var paddle2MaxVelocity = 300;
+
+        //Audio
+        var paddlehit1;
+        var paddlehit2;
+        var point;
+        var winner;
+       
+        //Power Up Variables
+        var lastTouch;
+        var extralife;
+        var bomb;
+        var frozen;
+        var speed;
+        var ballspeed;
+        var whichPowerUp;
+        var limitPowerUp = 3;
+        var numPowerUp;
+        var timedEvent;
+        var xLoc;
+        var yLoc;
+        var powerupBounds;
+
+        //Obstacles Variables
+        var triangle;
+        var circle;
+        var square;
+        var obsX;
+        var obsY;
+        
+        
+        var menuText; 
+        var menuFont = {font: "20px Impact", fill:"#ffb300", alight: "center", };
+        var click;
+        
+        //Crucial Game State Variables
+        var launch=false;
+        var win=false;
+        
+        function preload() {
+            
+            //Setup
+            this.load.image('background', '../assets/background/background.png');
+            this.load.image('leftPaddle', '../assets/gameplay/paddle1.png');
+            this.load.image('rightPaddle', '../assets/gameplay/paddle2.png');
+            this.load.image('borderTB','../assets/background/border1.png');
+            this.load.image('borderLR','../assets/background/border2.png');
+            this.load.image('ball', '../assets/gameplay/ball2.png');
+            
+            //Audio
+            this.load.audio('hit1', '../assets/audio/hit1.mp3');
+            this.load.audio('hit2', '../assets/audio/hit2.mp3');
+            this.load.audio('point', '../assets/audio/point.mp3');
+            this.load.audio('winner', '../assets/audio/winner.mp3');
+            this.load.audio('click', '../assets/audio/click.mp3');
+            
+            //Powerups
+            this.load.image('extralife','../assets/powerups/extralife.png');
+            this.load.image('bomb','../assets/powerups/bomb.png');
+            this.load.image('frozen','../assets/powerups/frozen.png');
+            this.load.image('speed','../assets/powerups/speed.png');
+            this.load.image('ballspeed','../assets/powerups/ballspeed.png');  
+            
+            //Obstacles
+            this.load.image('triangle', '../assets/obstacles/triangle.png');
+            this.load.image('circle', '../assets/obstacles/circle.png');
+            this.load.image('square', '../assets/obstacles/square.png');
+        }
+
+        function create() {
+            
+            //Background
+            this.add.image(325, 250, 'background');
+            topBorder = this.add.image(315,4.5,'borderTB');
+            bottomBorder = this.add.image(315,475,'borderTB');
+            leftBorder = this.add.image(5,240,'borderLR');
+            rightBorder = this.add.image(636,240,'borderLR');
+
+            //Left Paddle
+            paddle1 = this.physics.add.sprite(25, 240, 'leftPaddle');
+            paddle1.setCollideWorldBounds(true);
+            paddle1.body.immovable = true;
+            paddle1.setDisplaySize(41, 90);
+
+            //Right Paddle
+            paddle2 = this.physics.add.sprite(615, 240, 'rightPaddle');
+            paddle2.setCollideWorldBounds(true);
+            paddle2.body.immovable = true;
+            paddle2.setDisplaySize(41, 90);
+
+            //Paddle Noises
+            paddlehit1 = this.sound.add('hit1');
+            paddlehit2 = this.sound.add('hit2');
+            point = this.sound.add('point');
+            winner = this.sound.add('winner');
+            click = this.sound.add('click');
+            
+
+            //Ball
+            ball = this.physics.add.sprite(325, 250, 'ball');
+            ball.setCollideWorldBounds(true);
+            ball.setBounce(1.2, 1.1);
+            ball.body.maxVelocity.set(ballMaxVelocity);
+
+            //Paddle Controls
+            cursors = this.input.keyboard.createCursorKeys();
+
+            //Paddle Collisions
+            this.physics.add.collider(ball, paddle1, function() {
+                paddlehit1.play();
+                lastTouch = 0;
+            });
+            this.physics.add.collider(ball, paddle2, function() {
+                paddlehit2.play();
+                lastTouch = 1;
+            });
+            
+            //Text Output
+            scoreText1 = this.add.text(25, 25, "Score: "+score1, scoreFont);
+            scoreText2 = this.add.text(450, 25, "Score: "+score2, scoreFont);
+            relaunchText = this.add.text(150,200, "Press the SPACE key to Launch", relaunchFont);
+            winningText1 = this.add.text(25,100,'',winningFont); 
+            winningText2 = this.add.text(360,100,'',winningFont); 
+            
+            //Power Ups
+            extralife = this.physics.add.sprite(-100,-100,'extralife');
+            bomb = this.physics.add.sprite(-100,-100,'bomb');
+            frozen = this.physics.add.sprite(-100,-100,'frozen');
+            speed = this.physics.add.sprite(-100,-100,'speed');
+            ballspeed = this.physics.add.sprite(-100,-100,'ballspeed');
+            
+            //Power Up Spawner
+            timedEvent = this.time.addEvent({ delay: 1000, callback: launchPowerUp, callbackScope: this});
+            numPowerUp = 0;
+    
+            //Obstacles
+            triangle = this.physics.add.sprite(-100,-100,'triangle');
+            circle = this.physics.add.sprite(-100,-100,'circle');
+            square = this.physics.add.sprite(-100,-100,'square');
+            triangle.body.immovable = true;
+            circle.body.immovable = true;
+            circle.body.setCircle(23);
+            square.body.immovable = true;
+            
+            
+            //Obstacle Collision Detection
+            this.physics.add.collider(ball, triangle);
+            this.physics.add.collider(ball, circle);
+            this.physics.add.collider(ball, square);
+            
+            
+            menuText = this.add.text(250, 300, 'Go Back To Menu', menuFont);
+            menuText.setInteractive();
+            menuText.on('pointerdown', () => { window.location.replace('../menu/index.html'); click.play(); })
+            
+            
+            
+        }
+
+        function update() {
+            
+            //Checks to see if the game has not been won
+            if(!win){
+                
+                //Checks to see if the ball has been launched
+                if(launch){
+                    //Paddle Movement
+                    paddleMovement();
+
+                    //Check Score
+                    checkScore();
+
+                    //Check Win
+                    checkWin();
+                    
+                    //Check to see if ball collides with power up
+                    checkCollision();
+                }
+                
+                //If the ball has not been launched, relaunch it
+                if(!launch){
+                    relaunchGame();
+                }
+                
+            
+            }
+            
+            //If the game has been won, reset it
+            if(win){
+                resetGame();
+            }
+            
+        }
+        
+        //Power Up Functions
+        function launchPowerUp (){
+            
+            //Determines which Power Up will be used
+            whichPowerUp = Math.floor(Math.random()*5);
+            
+            //Determins the location of the Power Up 
+            xLoc = Math.floor(Math.random()*500)+100;
+            yLoc = Math.floor(Math.random()*300)+100;
+            
+            //Only spawn a Power Up if there are not too many already in the game field
+            if(numPowerUp<limitPowerUp){
+                if(whichPowerUp==1){
+                    setPowerUp(extralife, xLoc, yLoc);
+                }
+                if(whichPowerUp==2){
+                    setPowerUp(bomb, xLoc, yLoc);
+                }
+                if(whichPowerUp==3){
+                    setPowerUp(frozen, xLoc, yLoc);
+                }
+                if(whichPowerUp==4){
+                    setPowerUp(speed, xLoc, yLoc);
+                }
+                if(whichPowerUp==5){
+                    setPowerUp(ballspeed, xLoc, yLoc);
+                }
+            }
+            
+            //If the there are too many power ups already, destroy one of them to make room.
+            else{
+                if(whichPowerUp==1){
+                    destroyPowerUp(extralife);
+                }
+                if(whichPowerUp==2){
+                    destroyPowerUp(bomb);
+                }
+                if(whichPowerUp==3){
+                    destroyPowerUp(frozen);
+                }
+                if(whichPowerUp==4){
+                    destroyPowerUp(speed);
+                }
+                if(whichPowerUp==1){
+                    destroyPowerUp(ballspeed);
+                }
+            }
+            
+            //Call this event every 2 - 10 seconds
+            timedEvent.reset({ delay: Phaser.Math.Between(2000,10000), callback: launchPowerUp, callbackScope: this, repeat: 1});
+        }
+        function destroyPowerUp(sprite){
+            sprite.visible = false;
+            sprite.x = -100;
+            sprite.y = -100;
+            numPowerUp--;
+        }    
+        function setPowerUp(sprite, xLoc, yLoc){
+            sprite.x = xLoc;
+            sprite.y = yLoc;
+            sprite.visible=true;
+            numPowerUp++;
+        }
+        
+        function checkCollision(){
+            if(collisionParam(extralife)){
+                extralifeFN();
+            } 
+            else if(collisionParam(bomb)){
+                bombFN();
+            }
+            else if(collisionParam(frozen)){
+                frozenFN();
+            }
+            else if(collisionParam(speed)){
+                speedFN();
+            }
+            else if(collisionParam(ballspeed)){
+                ballspeedFN();
+            }
+
+        
+        }
+        
+        function collisionParam(sprite){
+            if ((sprite.x <= ball.x && ball.x <= sprite.x+80) && (sprite.y <= ball.y && ball.y <= sprite.y+80)){
+                return true;
+            }
+            else{
+                return false;
+            }
+        }
+        function extralifeFN(){
+            console.log("Heart Power Up Touched!");
+                if(lastTouch==0){
+                    score1++;
+                    scoreText1.setText("Score: " + score1);
+                } else if(lastTouch==1){
+                    score2++; 
+                    scoreText2.setText("Score: " + score2);
+                }
+                destroyPowerUp(extralife);
+        }
+        function bombFN(){
+            console.log("Bomb Power Up Touched!");
+                if(lastTouch==0){
+                    score1--;
+                    scoreText1.setText("Score: " + score1);
+                } else if(lastTouch==1){
+                    score2--;
+                    scoreText2.setText("Score: " + score2);
+                }
+               destroyPowerUp(bomb);
+        }
+        function frozenFN(){
+            console.log("Frozen Power Up Touched!");
+                if(lastTouch==0){
+                    paddle2MaxVelocity = 100;
+                    
+                } else if (lastTouch==1){
+                    paddleVelocityUp = -300;
+                    paddleVelocityDown = 300;        
+                }
+                destroyPowerUp(frozen);
+        }
+        function speedFN(){
+            console.log("Speed Power Up Touched!");
+                if(lastTouch==0){
+                    paddleVelocityUp = -1000;
+                    paddleVelocityDown = 1000;
+                } else if (lastTouch==1){
+                    paddle2MaxVelocity = 1000;
+                            
+                }
+                destroyPowerUp(speed);
+        }
+        function ballspeedFN(){
+            console.log("Ball Speed Power Up Touched!");
+            ball.setBounce(2,1.2);
+            ballMaxVelocity=1000;
+            destroyPowerUp(ballspeed);
+        }
+        
+        //Initial Functions
+        function paddleMovement() {
+            
+            //Moves paddle 1 dependant on user input
+            if (cursors.up.isDown) {
+                paddle1.setVelocityY(paddleVelocityUp);
+            } else if (cursors.down.isDown) {
+                paddle1.setVelocityY(paddleVelocityDown)
+            } else {
+                paddle1.setVelocityY(0);
+            }
+
+            //Sets paddle 2 to follow the ball with a set max y velocity
+            paddle2.body.velocity.setTo(ball.body.velocity.y);
+            paddle2.body.velocity.x = 0;
+            paddle2.body.maxVelocity.y = paddle2MaxVelocity;
+
+        }
+        function checkScore(){
+                            
+            //Checks to see if player 2 scored
+            if (ball.body.blocked.left) {
+                
+                //Plays the score sound
+                point.play();
+                
+                //Updates the score
+                score2++;
+                scoreText2.setText("Score: " + score2);
+                
+                //Resets the game for the next turn
+                reset();
+            }
+            
+            //Checks to see if player 1 scored
+            if (ball.body.blocked.right) {
+                
+                //Plays the score sound
+                point.play();
+                
+                //Updates the score
+                score1++;
+                scoreText1.setText("Score: " + score1);
+                
+                //Resets the game for the next turn
+                reset();
+            }
+            
+        }
+        
+        //Launching the Ball
+        function launchBall(){
+            
+            //The initial velocities of the ball
+            x = 350;
+            y = 350; 
+            
+            //Determins if the ball will move in a positve or negative x direction
+            direction = Math.floor(Math.random()*2);
+            if (direction == 0){
+                x = -x;
+            }
+            
+            //Determins if the ball will move in a positve or negative y direction
+            direction = Math.floor(Math.random()*2);
+            if (direction == 0){
+                y = -y;
+            }
+            
+            //Sets the ball velocity given its respective x and y velocities
+            ball.setVelocity(x, y);
+            
+            //Removes the relaunch text
+            relaunchText.visible = false;
+            
+            //Sets the games launch variable to true
+            launch = true;
+        }
+        
+        //Launch Obstacles
+        function launchObstacles(){
+        
+            for(i=0; i<3; i++){
+                obsX = Math.floor(Math.random()*500)+100;
+                obsY = Math.floor(Math.random()*300)+100;
+                if(i==0){
+                    triangle.x = obsX;
+                    triangle.y = obsY;
+                    triangle.setBounce(1.3);
+                }
+                if(i==1){
+                    circle.x = obsX;
+                    circle.y = obsY;
+                    circle.setBounce(1.3);
+                }
+                if(i==2){
+                    square.x = obsX;
+                    square.y = obsY;
+                    square.setBounce(1.3);
+                }
+            }
+        }
+        function removeObstacle(){
+            triangle.x = -100;
+            triangle.y = -100;
+            circle.x = -100;
+            circle.y = -100;
+            square.x = -100;
+            square.y = -100;
+        }
+
+        //Relaunching Functions        
+        function reset(){
+            
+            //Removes all the Power Ups from the level
+            destroyPowerUp(extralife);
+            destroyPowerUp(bomb);
+            destroyPowerUp(frozen);
+            destroyPowerUp(speed);
+            destroyPowerUp(ballspeed);
+            
+            //Shows the relaunch text
+            relaunchText.visible=true;
+            
+            //Shows the menu screen option
+            menuText.visible=true;
+            
+            //Rests the paddles to their initial location
+            paddle1.body.velocity.setTo(0);
+            paddle2.body.velocity.setTo(0);
+            paddle1.y = 240;
+            paddle2.y = 240;
+            paddleVelocityDown = 500;
+            paddleVelocityUp = -500;
+            paddle2MaxVelocity = 500;
+            
+            //Resets the ball to its initial location
+            ball.setVelocity(0,0);
+            ball.x=325;
+            ball.y=250;
+            ball.setBounce(1.2, 1.1);
+            ballMaxVelocity=700;
+            
+            
+            //Resets the obstacles
+            removeObstacle();
+            
+            //Sets the games launch variable to false
+            launch = false;
+        }
+        function relaunchGame(){
+            
+            //Waits for user input to relaunch the game
+            if (cursors.space.isDown){
+                
+                //Removes the relaunch text
+                relaunchText.visible=false;
+                
+                //Removes the menu screen option
+                menuText.visible=false;
+                
+                //Relaunches the ball in a random velocity
+                launchBall();
+                
+                //Launches the obstacles in the game
+                launchObstacles();
+                
+                //Changes the games launch variable to true
+                launch = true;
+            }
+        }
+    
+        //Winning Functions
+        function checkWin(){
+            
+            //Checks to see player one has reached the max score
+            if(score1==7){
+                
+                //Plays the winning sound
+                winner.play();
+                
+                //Destroys the ball
+                destroyForWin(ball);
+                winningText1.visible=true;
+                relaunchText.visible=true;
+                winningText1.setText("PLAYER ONE WINS!");
+                
+                //Sets the game win variable to true
+                win=true;
+                
+                //Sets lastTouch to 3 so the next time the game starts and a power up is touched, no one will be given the effect
+                lastTouch=3;
+
+            }
+            
+            //Checks to see player two has reached the max score
+            else if (score2==7){
+                
+                //Plays the winning sound
+                winner.play();
+                
+                //Destroys the ball
+                destroyForWin(ball);
+                
+                //Displays all the winning and relaunching text
+                winningText2.visible=true;
+                relaunchText.visible=true;
+                winningText2.setText("PLAYER TWO WINS!");
+                
+                //Sets the games win variable to true
+                win=true;
+                
+                //Sets lastTouch to 3 so the next time the game starts and a power up is touched, no one will be given the effect
+                lastTouch=3;
+            }
+            
+            
+        }
+        function destroyForWin(sprite){
+            
+            //Makes the sprite invisible and no longer be effected by the gameplay
+            sprite.visible = false;
+            sprite.setCollideWorldBounds(false);  
+        }
+        function resetGame(){
+            
+            //Waits for user input to reset the game
+            if(cursors.space.isDown){
+                
+                //Removes all winning text, resets both scores to 0, shows the menu screen option
+                winningText1.visible=false;
+                winningText2.visible=false;
+                menuText.visible=false;
+                score1=0;
+                score2=0;
+                scoreText1.setText("Score: "+score1);
+                scoreText2.setText("Score: "+score2);
+                
+                //Resets the ball to its initial state
+                ball.setBounce(1.2, 1.1);
+                ballMaxVelocity=700;
+                
+                //Resets the paddles to their intitial state
+                paddleVelocityDown=500;
+                paddleVelocityUp=-500;
+                paddle2MaxVelocity = 500;
+        
+                //Relaunches the game
+                launchAfterWin();    
+            }
+        }
+        function launchAfterWin(){
+            
+            //Resets the ball back to its initial state
+            ball.visible=true;
+            ball.setCollideWorldBounds(true);
+            
+            //Sets the game win variable to false;
+            win = false;
+            
+            //Relaunch the obstacles
+            launchObstacles();
+            
+            //Relaunches the ball
+            launchBall();
+        }
+        
+        var game = new Phaser.Game(config);
+
+    </script>
+</body>
+
+</html>
+
+<!--
+Collisions
+Objects
+-->
